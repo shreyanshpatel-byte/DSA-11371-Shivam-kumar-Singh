@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blood Bank Manager — Java DSA Interactive Dashboard</title>
+  <!-- Load Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- Top Medical Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center shadow-inner flex-shrink-0">
+          <!-- Blood Drop SVG Icon -->
+          <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            Blood Bank Manager
+            <span class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              Java DSA Edition
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400">
+            HashMap Inventory • ArrayList Donor Registry • FIFO LinkedList Request Queue
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Controls & Complexity Badges -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <button id="loadSampleBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer font-medium">
+          Load Sample Data
+        </button>
+        <button id="resetZeroBtn" class="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 text-rose-200 border border-rose-800/60 transition cursor-pointer font-medium">
+          Reset Stock to 0
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6">
+
+    <!-- Status Alert Banner -->
+    <div id="alertBanner" class="hidden rounded-xl p-3.5 border text-sm font-medium flex items-center justify-between transition-all">
+      <div class="flex items-center gap-2.5">
+        <span id="alertIcon"></span>
+        <span id="alertText"></span>
+      </div>
+      <button onclick="dismissAlert()" class="text-xs opacity-75 hover:opacity-100 px-2 py-1 rounded cursor-pointer">Dismiss</button>
+    </div>
+
+    <!-- Section 1: Blood Stock Overview Grid (HashMap<String, Integer> stock) -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-base font-bold text-slate-900">Available Blood Stock Inventory</h2>
+            <span class="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+              HashMap&lt;String, Integer&gt; • O(1)
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Live unit tracking across all 8 ABO/Rh blood groups.</p>
+        </div>
+
+        <!-- Inline Quick Add Stock Form -->
+        <form id="addStockForm" class="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+          <select id="stockGroupSelect" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+          <input type="number" id="stockUnitsInput" placeholder="Units" min="1" max="500" required
+            class="w-24 px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500" />
+          <button type="submit" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-semibold shadow-sm transition cursor-pointer whitespace-nowrap">
+            + Add Blood Stock
+          </button>
+        </form>
+      </div>
+
+      <!-- 8 Blood Group Cards Grid -->
+      <div id="stockGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- Middle Grid: Donor Management (Left 7 cols) + FIFO Blood Request Queue (Right 5 cols) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Donor Management Panel (ArrayList<Donor>) -->
+      <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-900">Donor Registry</h2>
+              <span class="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                ArrayList&lt;Donor&gt;
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">Register verified donors (ages 18–65), filter by blood group, or sort alphabetically.</p>
+          </div>
+          <span id="donorCountBadge" class="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 self-start">
+            0 Donors
+          </span>
+        </div>
+
+        <!-- Add Donor Form -->
+        <form id="addDonorForm" class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-5 space-y-3">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-700">Register New Donor</div>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div class="sm:col-span-3">
+              <label class="block text-[11px] font-medium text-slate-500 mb-1">Donor ID *</label>
+              <input type="number" id="donorIdInput" placeholder="e.g., 101" required
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500" />
+            </div>
+            <div class="sm:col-span-5">
+              <label class="block text-[11px] font-medium text-slate-500 mb-1">Full Name *</label>
+              <input type="text" id="donorNameInput" placeholder="e.g., Aarav Sharma" required
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500" />
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-[11px] font-medium text-slate-500 mb-1">Age (18–65) *</label>
+              <input type="number" id="donorAgeInput" placeholder="25" required
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500" />
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-[11px] font-medium text-slate-500 mb-1">Blood Group *</label>
+              <select id="donorGroupSelect" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
+            </div>
+            <div class="sm:col-span-5">
+              <label class="block text-[11px] font-medium text-slate-500 mb-1">Phone Number *</label>
+              <input type="text" id="donorPhoneInput" placeholder="e.g., 9876543210" required
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500" />
+            </div>
+            <div class="sm:col-span-3 flex items-end">
+              <button type="submit" class="w-full py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition cursor-pointer">
+                + Add Donor
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Search & Sort Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <label for="filterGroupSelect" class="text-xs font-semibold text-slate-600">Search Group:</label>
+            <select id="filterGroupSelect" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-mono font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+              <option value="ALL">All Groups</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+
+          <button id="sortDonorsBtn" type="button" class="px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5">
+            <span>Sort Donors (A–Z)</span>
+            <span class="text-[10px] font-mono text-slate-500">O(N log N)</span>
+          </button>
+        </div>
+
+        <!-- Donor Directory Table -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <th class="py-2.5 px-3">ID</th>
+                <th class="py-2.5 px-3">Donor Name</th>
+                <th class="py-2.5 px-3">Age</th>
+                <th class="py-2.5 px-3">Group</th>
+                <th class="py-2.5 px-3">Phone</th>
+              </tr>
+            </thead>
+            <tbody id="donorTableBody" class="divide-y divide-slate-100">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Right Column: FIFO Blood Request Queue (Queue<BloodRequest>) -->
+      <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-900">Blood Request Queue</h2>
+              <span class="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                Queue (FIFO)
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">Requests are processed strictly in First-In, First-Out order.</p>
+          </div>
+          <span id="queueCountBadge" class="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
+            0 Pending
+          </span>
+        </div>
+
+        <!-- Request Blood Form -->
+        <form id="requestBloodForm" class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 space-y-3">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-700">New Patient Blood Request</div>
+          <div class="space-y-2.5">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-500 mb-1">Patient Name *</label>
+              <input type="text" id="patientNameInput" placeholder="e.g., Rohan Verma" required
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500" />
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-500 mb-1">Blood Group *</label>
+                <select id="requestGroupSelect" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-500 mb-1">Required Units *</label>
+                <input type="number" id="requestUnitsInput" placeholder="2" min="1" max="50" required
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500" />
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="w-full py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm transition cursor-pointer">
+            + Enqueue Blood Request (offer)
+          </button>
+        </form>
+
+        <!-- Process Next Request Action Button -->
+        <button id="processRequestBtn" type="button" class="w-full py-2.5 px-4 mb-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold shadow-sm transition cursor-pointer flex items-center justify-center gap-2">
+          <span>Process Next Request (peek &amp; poll)</span>
+          <span class="font-mono text-[10px] bg-emerald-800/60 px-2 py-0.5 rounded">O(1)</span>
+        </button>
+
+        <!-- Visual FIFO Queue List -->
+        <div id="queueList" class="space-y-2.5 flex-1 overflow-y-auto max-h-[260px]">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Bottom Grid: Live Java Console Log + DSA Data Structure Inspector -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Live Java Console Output (5 cols) -->
+      <section class="lg:col-span-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-sm p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h2 class="text-xs font-mono font-bold text-slate-200 ml-1">BloodBankManager.java — Console</h2>
+          </div>
+          <button id="clearConsoleBtn" class="text-[11px] font-mono text-slate-400 hover:text-white cursor-pointer">
+            Clear
+          </button>
+        </div>
+        <div id="consoleOutput" class="font-mono text-xs text-emerald-400 space-y-1.5 overflow-y-auto h-52 pr-1">
+          <!-- Console messages appended here -->
+        </div>
+      </section>
+
+      <!-- DSA Internal State & Big-O Complexity Inspector (7 cols) -->
+      <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">DSA Internal State Inspector</h2>
+            <p class="text-xs text-slate-500">Inspect live underlying memory structures and time complexities.</p>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="switchDsaTab('hashmap')" id="tab-hashmap" class="dsa-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white transition cursor-pointer">
+              HashMap Stock
+            </button>
+            <button onclick="switchDsaTab('arraylist')" id="tab-arraylist" class="dsa-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer">
+              ArrayList Donors
+            </button>
+            <button onclick="switchDsaTab('queue')" id="tab-queue" class="dsa-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer">
+              LinkedList Queue
+            </button>
+            <button onclick="switchDsaTab('bigo')" id="tab-bigo" class="dsa-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer">
+              Big-O Summary
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab Content Panels -->
+        <div id="panel-hashmap" class="dsa-panel flex-1">
+          <pre id="rawHashMapView" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-mono text-xs text-slate-800 overflow-x-auto h-44"></pre>
+        </div>
+
+        <div id="panel-arraylist" class="dsa-panel hidden flex-1">
+          <pre id="rawArrayListView" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-mono text-xs text-slate-800 overflow-x-auto h-44"></pre>
+        </div>
+
+        <div id="panel-queue" class="dsa-panel hidden flex-1">
+          <pre id="rawQueueView" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-mono text-xs text-slate-800 overflow-x-auto h-44"></pre>
+        </div>
+
+        <div id="panel-bigo" class="dsa-panel hidden flex-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div class="font-mono font-bold text-rose-600">O(1) — HashMap Stock Lookup/Update</div>
+              <p class="text-slate-600 mt-1">Direct key hashing via <code>stock.get(group)</code> and <code>stock.put(group, units)</code>.</p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div class="font-mono font-bold text-indigo-600">O(1) — Queue Enqueue &amp; Dequeue</div>
+              <p class="text-slate-600 mt-1"><code>requests.add()</code>, <code>peek()</code>, and <code>poll()</code> operate at head/tail pointers in constant time.</p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div class="font-mono font-bold text-amber-600">O(N) — Donor Search &amp; Duplicate ID Check</div>
+              <p class="text-slate-600 mt-1">Linear scan across <code>ArrayList&lt;Donor&gt;</code> matching <code>d.id</code> or <code>d.bloodGroup</code>.</p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div class="font-mono font-bold text-emerald-600">O(N log N) — Alphabetical Donor Sort</div>
+              <p class="text-slate-600 mt-1">TimSort via <code>donors.sort(Comparator.comparing(d -&gt; d.name.toLowerCase()))</code>.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <span>Blood Bank Manager — Data Structures &amp; Algorithms Project</span>
+      <span>Implemented with HashMap, ArrayList &amp; FIFO Queue</span>
+    </div>
+  </footer>
+
+  <!-- Core JavaScript Replicating BloodBankManager.java -->
+  <script>
+    // ==================== DATA MODELS (Mirroring Java Classes) ====================
+    class Donor {
+      constructor(id, name, age, bloodGroup, phone) {
+        this.id = id;
+        this.name = name;
+        this.age = age;
+        this.bloodGroup = bloodGroup;
+        this.phone = phone;
+      }
+    }
+
+    class BloodRequest {
+      constructor(patientName, bloodGroup, units) {
+        this.patientName = patientName;
+        this.bloodGroup = bloodGroup;
+        this.units = units;
+        this.timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
+    }
+
+    // ==================== STATE STRUCTURES ====================
+    const groups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+    let donors = [];               // ArrayList<Donor>
+    let requests = [];             // Queue<BloodRequest> (FIFO)
+    let stock = new Map();         // HashMap<String, Integer>
+
+    function initializeStock() {
+      stock.clear();
+      for (const g of groups) {
+        stock.set(g, 0);
+      }
+    }
+
+    function validGroup(group) {
+      return stock.has(group.toUpperCase());
+    }
+
+    // ==================== CONSOLE & ALERT HELPERS ====================
+    function logConsole(message, type = "info") {
+      const consoleEl = document.getElementById("consoleOutput");
+      const time = new Date().toLocaleTimeString([], { hour12: false });
+      const line = document.createElement("div");
+
+      let colorClass = "text-emerald-400";
+      if (type === "error") colorClass = "text-rose-400";
+      else if (type === "warn") colorClass = "text-amber-300";
+      else if (type === "system") colorClass = "text-sky-400";
+
+      line.className = `${colorClass} leading-relaxed`;
+      line.textContent = `[${time}] > ${message}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function showAlert(message, type = "success") {
+      const banner = document.getElementById("alertBanner");
+      const icon = document.getElementById("alertIcon");
+      const text = document.getElementById("alertText");
+
+      banner.className = "rounded-xl p-3.5 border text-sm font-medium flex items-center justify-between transition-all";
+      if (type === "error") {
+        banner.classList.add("bg-rose-50", "border-rose-200", "text-rose-800");
+        icon.textContent = "⚠️";
+      } else if (type === "warn") {
+        banner.classList.add("bg-amber-50", "border-amber-200", "text-amber-800");
+        icon.textContent = "⏳";
+      } else {
+        banner.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-800");
+        icon.textContent = "✅";
+      }
+
+      text.textContent = message;
+      banner.classList.remove("hidden");
+    }
+
+    function dismissAlert() {
+      document.getElementById("alertBanner").classList.add("hidden");
+    }
+
+    // ==================== CORE JAVA METHODS REPLICATED ====================
+
+    // 1. addDonor()
+    function addDonor(id, name, age, group, phone) {
+      for (const d of donors) {
+        if (d.id === id) {
+          logConsole("Donor ID already exists!", "error");
+          showAlert("Donor ID already exists! Please enter a unique ID.", "error");
+          return false;
+        }
+      }
+
+      if (age < 18 || age > 65) {
+        logConsole("Invalid age! Donor age must be 18-65.", "error");
+        showAlert("Invalid age! Donor age must be between 18 and 65.", "error");
+        return false;
+      }
+
+      const normalizedGroup = group.trim().toUpperCase();
+      if (!validGroup(normalizedGroup)) {
+        logConsole("Invalid Blood Group!", "error");
+        showAlert("Invalid Blood Group!", "error");
+        return false;
+      }
+
+      donors.push(new Donor(id, name.trim(), age, normalizedGroup, phone.trim()));
+      logConsole(`Donor Added Successfully! (${id} | ${name.trim()} | ${normalizedGroup})`, "info");
+      showAlert(`Donor "${name.trim()}" (${normalizedGroup}) added successfully!`, "success");
+      renderAll();
+      return true;
+    }
+
+    // 2. sortDonors()
+    function sortDonors() {
+      donors.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      logConsole("Donors Sorted By Name!", "system");
+      showAlert("Donors sorted alphabetically by name (A–Z).", "success");
+      renderAll();
+    }
+
+    // 3. addBloodStock()
+    function addBloodStock(group, units) {
+      const normalizedGroup = group.trim().toUpperCase();
+      if (!validGroup(normalizedGroup)) {
+        logConsole("Invalid Blood Group!", "error");
+        showAlert("Invalid Blood Group!", "error");
+        return false;
+      }
+      if (units <= 0) {
+        logConsole("Invalid Units!", "error");
+        showAlert("Units must be greater than 0.", "error");
+        return false;
+      }
+
+      stock.set(normalizedGroup, stock.get(normalizedGroup) + units);
+      logConsole(`Blood Stock Updated! (${normalizedGroup} +${units} Units -> Total: ${stock.get(normalizedGroup)})`, "info");
+      showAlert(`Added ${units} units to ${normalizedGroup} stock.`, "success");
+      renderAll();
+      return true;
+    }
+
+    // 4. requestBlood()
+    function requestBlood(patientName, group, units) {
+      const normalizedGroup = group.trim().toUpperCase();
+      if (!validGroup(normalizedGroup)) {
+        logConsole("Invalid Blood Group!", "error");
+        showAlert("Invalid Blood Group!", "error");
+        return false;
+      }
+      if (units <= 0) {
+        logConsole("Invalid Units!", "error");
+        showAlert("Required units must be greater than 0.", "error");
+        return false;
+      }
+
+      requests.push(new BloodRequest(patientName.trim(), normalizedGroup, units));
+      logConsole(`Blood Request Added To Queue! (Patient: ${patientName.trim()}, ${normalizedGroup}, ${units} Units)`, "system");
+      showAlert(`Request for ${patientName.trim()} (${units} units of ${normalizedGroup}) added to FIFO queue.`, "success");
+      renderAll();
+      return true;
+    }
+
+    // 5. processRequest() — Exact peek() -> check stock -> poll() FIFO semantics
+    function processRequest() {
+      if (requests.length === 0) {
+        logConsole("No Pending Requests!", "warn");
+        showAlert("No pending requests in the queue.", "warn");
+        return;
+      }
+
+      // BloodRequest r = requests.peek();
+      const r = requests[0];
+      const available = stock.get(r.bloodGroup);
+
+      if (available >= r.units) {
+        stock.set(r.bloodGroup, available - r.units);
+        // requests.poll();
+        requests.shift();
+        logConsole(`Blood Issued Successfully! Patient: ${r.patientName} (${r.units} Units of ${r.bloodGroup})`, "info");
+        showAlert(`Blood Issued Successfully to ${r.patientName} (${r.units} units of ${r.bloodGroup})!`, "success");
+      } else {
+        logConsole(`Insufficient Stock! Needed ${r.units} units of ${r.bloodGroup}, available: ${available}. Request Remains In Queue.`, "error");
+        showAlert(`Insufficient Stock for ${r.patientName} (${r.bloodGroup}: need ${r.units}, have ${available}). Request remains at front of queue!`, "error");
+      }
+
+      renderAll();
+    }
+
+    // ==================== UI RENDERING ====================
+    function renderStockGrid() {
+      const grid = document.getElementById("stockGrid");
+      grid.innerHTML = groups.map(group => {
+        const units = stock.get(group);
+        const isCritical = units === 0;
+        const isLow = units > 0 && units < 5;
+
+        let cardBorder = "border-slate-200 bg-slate-50/70";
+        let badgeHtml = `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Available</span>`;
+        let unitColor = "text-slate-900";
+
+        if (isCritical) {
+          cardBorder = "border-rose-200 bg-rose-50/60";
+          badgeHtml = `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">Out of Stock</span>`;
+          unitColor = "text-rose-700";
+        } else if (isLow) {
+          cardBorder = "border-amber-200 bg-amber-50/60";
+          badgeHtml = `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Low Stock</span>`;
+          unitColor = "text-amber-800";
+        }
+
+        return `
+          <div class="rounded-xl border ${cardBorder} p-3.5 flex flex-col justify-between transition">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-mono text-base font-extrabold text-rose-600">${group}</span>
+              ${badgeHtml}
+            </div>
+            <div>
+              <div class="text-2xl font-extrabold font-mono ${unitColor}">${units}</div>
+              <div class="text-[11px] text-slate-500 font-medium">Units</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderDonorsTable() {
+      const tbody = document.getElementById("donorTableBody");
+      const filterGroup = document.getElementById("filterGroupSelect").value;
+      const countBadge = document.getElementById("donorCountBadge");
+
+      const filtered = filterGroup === "ALL"
+        ? donors
+        : donors.filter(d => d.bloodGroup === filterGroup);
+
+      countBadge.textContent = `${filtered.length} Donor${filtered.length === 1 ? '' : 's'}`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-8 text-center text-slate-400 font-medium">
+              ${donors.length === 0 ? "No Donors Available!" : `No Donor Found for ${filterGroup}!`}
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(d => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="py-2.5 px-3 font-mono font-semibold text-slate-600">#${d.id}</td>
+          <td class="py-2.5 px-3 font-semibold text-slate-900">${d.name}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-600">${d.age} yrs</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-rose-50 text-rose-700 border border-rose-200">
+              ${d.bloodGroup}
+            </span>
+          </td>
+          <td class="py-2.5 px-3 font-mono text-slate-600">${d.phone}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderQueueList() {
+      const listEl = document.getElementById("queueList");
+      const countBadge = document.getElementById("queueCountBadge");
+
+      countBadge.textContent = `${requests.length} Pending`;
+
+      if (requests.length === 0) {
+        listEl.innerHTML = `
+          <div class="border border-dashed border-slate-200 rounded-xl p-6 text-center text-xs text-slate-400">
+            No Pending Requests in Queue.
+          </div>`;
+        return;
+      }
+
+      listEl.innerHTML = requests.map((req, index) => {
+        const isHead = index === 0;
+        const available = stock.get(req.bloodGroup);
+        const canFulfill = available >= req.units;
+
+        const containerClass = isHead
+          ? "border-2 border-rose-500 bg-rose-50/40"
+          : "border border-slate-200 bg-slate-50";
+
+        return `
+          <div class="rounded-xl p-3.5 ${containerClass} flex items-center justify-between gap-3 transition">
+            <div>
+              <div class="flex items-center gap-2">
+                ${isHead
+                  ? `<span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-rose-600 text-white">NEXT IN QUEUE (HEAD)</span>`
+                  : `<span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">Position #${index + 1}</span>`
+                }
+                <span class="text-[11px] font-mono text-slate-400">${req.timestamp}</span>
+              </div>
+              <div class="text-sm font-bold text-slate-900 mt-1">${req.patientName}</div>
+              <div class="text-xs text-slate-600 mt-0.5">
+                Needs <strong class="font-mono text-slate-900">${req.units} units</strong> of
+                <strong class="font-mono text-rose-700">${req.bloodGroup}</strong>
+                <span class="text-[11px] ml-1 ${canFulfill ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}">
+                  (${canFulfill ? 'Stock Ready' : `Short: ${available} avail`})
+                </span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderDsaInspector() {
+      // 1. HashMap View
+      const stockObj = Object.fromEntries(stock);
+      document.getElementById("rawHashMapView").textContent =
+        "// HashMap<String, Integer> stock\n" + JSON.stringify(stockObj, null, 2);
+
+      // 2. ArrayList View
+      document.getElementById("rawArrayListView").textContent =
+        `// ArrayList<Donor> donors (size = ${donors.length})\n` + JSON.stringify(donors, null, 2);
+
+      // 3. Queue View
+      document.getElementById("rawQueueView").textContent =
+        `// Queue<BloodRequest> requests (FIFO LinkedList, size = ${requests.length})\n` + JSON.stringify(requests, null, 2);
+    }
+
+    function renderAll() {
+      renderStockGrid();
+      renderDonorsTable();
+      renderQueueList();
+      renderDsaInspector();
+    }
+
+    function switchDsaTab(tabName) {
+      document.querySelectorAll(".dsa-panel").forEach(p => p.classList.add("hidden"));
+      document.querySelectorAll(".dsa-tab").forEach(btn => {
+        btn.classList.remove("bg-rose-600", "text-white");
+        btn.classList.add("bg-slate-100", "text-slate-700");
+      });
+
+      document.getElementById(`panel-${tabName}`).classList.remove("hidden");
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      activeBtn.classList.remove("bg-slate-100", "text-slate-700");
+      activeBtn.classList.add("bg-rose-600", "text-white");
+    }
+
+    // ==================== SAMPLE DATA LOADER ====================
+    function loadSampleData() {
+      initializeStock();
+      donors = [];
+      requests = [];
+
+      // Sample Stock
+      stock.set("A+", 8);
+      stock.set("A-", 3);
+      stock.set("B+", 12);
+      stock.set("B-", 2);
+      stock.set("AB+", 4);
+      stock.set("AB-", 1);
+      stock.set("O+", 15);
+      stock.set("O-", 2);
+
+      // Sample Donors
+      donors.push(new Donor(104, "Vikramaditya Rao", 29, "O+", "9826011223"));
+      donors.push(new Donor(101, "Ananya Deshmukh", 24, "A+", "9826044556"));
+      donors.push(new Donor(102, "Kabir Malhotra", 34, "B+", "9826077889"));
+      donors.push(new Donor(103, "Meera Nair", 27, "O-", "9826099001"));
+
+      // Sample FIFO Queue Requests
+      requests.push(new BloodRequest("Rohan Verma", "O+", 3));
+      requests.push(new BloodRequest("Sneha Kulkarni", "O-", 4)); // Insufficient stock demo (only 2 units available)
+      requests.push(new BloodRequest("Arjun Singh", "B+", 2));
+
+      logConsole("Loaded sample donors, blood stock inventory, and FIFO request queue.", "system");
+      showAlert("Sample hospital dataset loaded.", "success");
+      renderAll();
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    document.getElementById("addStockForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const group = document.getElementById("stockGroupSelect").value;
+      const units = parseInt(document.getElementById("stockUnitsInput").value, 10);
+      if (addBloodStock(group, units)) {
+        document.getElementById("stockUnitsInput").value = "";
+      }
+    });
+
+    document.getElementById("addDonorForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const id = parseInt(document.getElementById("donorIdInput").value, 10);
+      const name = document.getElementById("donorNameInput").value;
+      const age = parseInt(document.getElementById("donorAgeInput").value, 10);
+      const group = document.getElementById("donorGroupSelect").value;
+      const phone = document.getElementById("donorPhoneInput").value;
+
+      if (addDonor(id, name, age, group, phone)) {
+        e.target.reset();
+      }
+    });
+
+    document.getElementById("filterGroupSelect").addEventListener("change", () => {
+      const selected = document.getElementById("filterGroupSelect").value;
+      logConsole(`Searching donors for blood group: ${selected}`, "system");
+      renderDonorsTable();
+    });
+
+    document.getElementById("sortDonorsBtn").addEventListener("click", sortDonors);
+
+    document.getElementById("requestBloodForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const patientName = document.getElementById("patientNameInput").value;
+      const group = document.getElementById("requestGroupSelect").value;
+      const units = parseInt(document.getElementById("requestUnitsInput").value, 10);
+
+      if (requestBlood(patientName, group, units)) {
+        e.target.reset();
+      }
+    });
+
+    document.getElementById("processRequestBtn").addEventListener("click", processRequest);
+
+    document.getElementById("loadSampleBtn").addEventListener("click", loadSampleData);
+
+    document.getElementById("resetZeroBtn").addEventListener("click", () => {
+      initializeStock();
+      logConsole("All blood stock units reset to 0.", "warn");
+      showAlert("Blood stock inventory reset to 0 units.", "warn");
+      renderAll();
+    });
+
+    document.getElementById("clearConsoleBtn").addEventListener("click", () => {
+      document.getElementById("consoleOutput").innerHTML = "";
+    });
+
+    // Initialize Application on Window Load
+    window.addEventListener("DOMContentLoaded", () => {
+      loadSampleData();
+    });
+  </script>
+</body>
+</html>
